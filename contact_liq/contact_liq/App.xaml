@@ -4,6 +4,7 @@
              xmlns:local="clr-namespace:contact_liq"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <local:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+        <local:ProjectionConverter x:Key="ProjectionConverter"/>
     </Application.Resources>
 </Application>
