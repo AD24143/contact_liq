@@ -1,50 +1,57 @@
+using System;
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
 
 namespace contact_liq
 {
-    /// <summary>
-    /// Represents a single contact with name, phone, email, and favorite status.
-    /// Implements INotifyPropertyChanged for WPF data binding support.
-    /// </summary>
-    public class Contact : INotifyPropertyChanged
+    public class contact : INotifyPropertyChanged
     {
-        private string _name = string.Empty;
-        private string _phone = string.Empty;
-        private string _email = string.Empty;
-        private bool _isFavorite;
+        private int _id;
+        private string _firstName;
+        private string _lastName;
+        private string _email;
+        private int _age;
+        private string _city;
 
-        public string Name
+        public int Id
         {
-            get => _name;
-            set { _name = value; OnPropertyChanged(); }
+            get => _id;
+            set { _id = value; OnPropertyChanged(nameof(Id)); }
         }
 
-        public string Phone
+        public string FirstName
         {
-            get => _phone;
-            set { _phone = value; OnPropertyChanged(); }
+            get => _firstName;
+            set { _firstName = value; OnPropertyChanged(nameof(FirstName)); }
+        }
+
+        public string LastName
+        {
+            get => _lastName;
+            set { _lastName = value; OnPropertyChanged(nameof(LastName)); }
         }
 
         public string Email
         {
             get => _email;
-            set { _email = value; OnPropertyChanged(); }
+            set { _email = value; OnPropertyChanged(nameof(Email)); }
         }
 
-        public bool IsFavorite
+        public int Age
         {
-            get => _isFavorite;
-            set { _isFavorite = value; OnPropertyChanged(); }
+            get => _age;
+            set { _age = value; OnPropertyChanged(nameof(Age)); }
         }
 
-        public event PropertyChangedEventHandler? PropertyChanged;
+        public string City
+        {
+            get => _city;
+            set { _city = value; OnPropertyChanged(nameof(City)); }
+        }
 
-        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-
-        public override string ToString() => Name;
     }
 }
