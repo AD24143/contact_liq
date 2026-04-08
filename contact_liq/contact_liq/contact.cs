@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 namespace contact_liq;
@@ -11,6 +11,9 @@ public class Contact : INotifyPropertyChanged
     private string _email = string.Empty;
     private int _age;
     private string _city = string.Empty;
+
+    private int? _categoryId;
+    private Category? _category;
 
     public int Id
     {
@@ -48,6 +51,18 @@ public class Contact : INotifyPropertyChanged
         set => SetField(ref _city, value);
     }
 
+    public int? CategoryId
+    {
+        get => _categoryId;
+        set => SetField(ref _categoryId, value);
+    }
+
+    public virtual Category? Category
+    {
+        get => _category;
+        set => SetField(ref _category, value);
+    }
+
     public string FullName => $"{FirstName} {LastName}".Trim();
 
     public Contact Clone()
@@ -59,7 +74,8 @@ public class Contact : INotifyPropertyChanged
             LastName = LastName,
             Email = Email,
             Age = Age,
-            City = City
+            City = City,
+            CategoryId = CategoryId
         };
     }
 
@@ -70,6 +86,7 @@ public class Contact : INotifyPropertyChanged
         Email = source.Email;
         Age = source.Age;
         City = source.City;
+        CategoryId = source.CategoryId;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

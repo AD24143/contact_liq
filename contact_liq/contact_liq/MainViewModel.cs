@@ -1,13 +1,14 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using Microsoft.EntityFrameworkCore;
 
 namespace contact_liq;
 
 public class MainViewModel : INotifyPropertyChanged
 {
-    private readonly ObservableCollection<Contact> _allContacts = [];
+    private readonly AppDbContext _dbContext;
     private Contact? _selectedContact;
     private string? _selectedFilter;
     private string? _selectedSort;
@@ -18,22 +19,24 @@ public class MainViewModel : INotifyPropertyChanged
     private string _projectionResult = "Select a projection to see transformed data.";
     private string _quantifierResult = "Select a check to evaluate the collection.";
     private string _aggregationResult = "Select an aggregation to calculate a value.";
-    private string _statusMessage = "Base version loaded with an in-memory collection.";
+    private string _statusMessage = "Database loaded successfully.";
 
     public MainViewModel()
     {
-        FilterOptions = ["City contains"];
-        SortOptions = ["First name ascending"];
-        ProjectionOptions = ["Full name and city"];
-        QuantifierOptions = ["Any contact older than 30"];
-        AggregationOptions = ["Average age"];
+        _dbContext = new AppDbContext();
+        _dbContext.Database.EnsureCreated();
+
+        FilterOptions = ["City contains", "Age is greater than", "First name starts with"];
+        SortOptions = ["First name ascending", "First name descending", "Age ascending", "Age descending"];
+        ProjectionOptions = ["Full name and city", "Only Emails", "Name and Age"];
+        QuantifierOptions = ["Any contact older than 30", "All contacts have email", "Any from Warsaw"];
+        AggregationOptions = ["Average age", "Max age", "Total contacts count"];
 
         AddCommand = new RelayCommand(AddContact);
         EditCommand = new RelayCommand(EditContact, () => SelectedContact is not null);
         DeleteCommand = new RelayCommand(DeleteContact, () => SelectedContact is not null);
         ApplyFiltersCommand = new RelayCommand(RefreshResults);
 
-        SeedContacts();
         SelectedFilter = FilterOptions[0];
         SelectedSort = SortOptions[0];
         SelectedProjection = ProjectionOptions[0];
@@ -172,56 +175,92 @@ public class MainViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    private void SeedContacts()
-    {
-        _allContacts.Add(new Contact { Id = 1, FirstName = "Alice", LastName = "Johnson", Email = "alice.johnson@example.com", Age = 24, City = "Warsaw" });
-        _allContacts.Add(new Contact { Id = 2, FirstName = "Brian", LastName = "Taylor", Email = "brian.taylor@example.com", Age = 31, City = "Krakow" });
-        _allContacts.Add(new Contact { Id = 3, FirstName = "Clara", LastName = "Evans", Email = "clara.evans@example.com", Age = 28, City = "Warsaw" });
-        _allContacts.Add(new Contact { Id = 4, FirstName = "David", LastName = "Miller", Email = "david.miller@example.com", Age = 36, City = "Gdansk" });
-        _allContacts.Add(new Contact { Id = 5, FirstName = "Eva", LastName = "Nowak", Email = "eva.nowak@example.com", Age = 29, City = "Wroclaw" });
-    }
-
     private void RefreshResults()
     {
-        IEnumerable<Contact> query = _allContacts;
+        var allContacts = _dbContext.Contacts.Include(c => c.Category).ToList();
+        IEnumerable<Contact> query = allContacts;
 
-        if (SelectedFilter == "City contains" && !string.IsNullOrWhiteSpace(FilterValue))
+        if (!string.IsNullOrWhiteSpace(FilterValue))
         {
-            query = query.Where(contact => contact.City.Contains(FilterValue, StringComparison.OrdinalIgnoreCase));
+            if (SelectedFilter == "City contains")
+            {
+                query = query.Where(contact => contact.City.Contains(FilterValue, StringComparison.OrdinalIgnoreCase));
+            }
+            else if (SelectedFilter == "Age is greater than" && int.TryParse(FilterValue, out int ageVal))
+            {
+                query = query.Where(contact => contact.Age > ageVal);
+            }
+            else if (SelectedFilter == "First name starts with")
+            {
+                query = query.Where(contact => contact.FirstName.StartsWith(FilterValue, StringComparison.OrdinalIgnoreCase));
+            }
         }
 
         if (SelectedSort == "First name ascending")
         {
             query = query.OrderBy(contact => contact.FirstName);
         }
+        else if (SelectedSort == "First name descending")
+        {
+            query = query.OrderByDescending(contact => contact.FirstName);
+        }
+        else if (SelectedSort == "Age ascending")
+        {
+            query = query.OrderBy(contact => contact.Age);
+        }
+        else if (SelectedSort == "Age descending")
+        {
+            query = query.OrderByDescending(contact => contact.Age);
+        }
 
         var resultList = query.ToList();
         ReplaceContacts(resultList);
         UpdateProjection(resultList);
-        UpdateQuantifier();
-        UpdateAggregation();
-        StatusMessage = $"{resultList.Count} contact(s) shown from {_allContacts.Count} total.";
+        UpdateQuantifier(allContacts);
+        UpdateAggregation(allContacts);
+        StatusMessage = $"{resultList.Count} contact(s) shown from {allContacts.Count} total.";
     }
 
     private void UpdateProjection(IEnumerable<Contact> resultList)
     {
-        ProjectionResult = SelectedProjection == "Full name and city"
-            ? string.Join(Environment.NewLine, resultList.Select(contact => $"{contact.FullName} - {contact.City}"))
-            : "Select a projection to see transformed data.";
+        if (SelectedProjection == "Full name and city")
+            ProjectionResult = string.Join(Environment.NewLine, resultList.Select(contact => $"{contact.FullName} - {contact.City}"));
+        else if (SelectedProjection == "Only Emails")
+            ProjectionResult = string.Join(Environment.NewLine, resultList.Select(contact => contact.Email));
+        else if (SelectedProjection == "Name and Age")
+            ProjectionResult = string.Join(Environment.NewLine, resultList.Select(contact => $"{contact.FullName} ({contact.Age})"));
+        else
+            ProjectionResult = "Select a projection to see transformed data.";
     }
 
-    private void UpdateQuantifier()
+    private void UpdateQuantifier(List<Contact> allContacts)
     {
-        QuantifierResult = SelectedQuantifier == "Any contact older than 30"
-            ? (_allContacts.Any(contact => contact.Age > 30) ? "Yes" : "No")
-            : "Select a check to evaluate the collection.";
+        if (SelectedQuantifier == "Any contact older than 30")
+            QuantifierResult = allContacts.Any(contact => contact.Age > 30) ? "Yes" : "No";
+        else if (SelectedQuantifier == "All contacts have email")
+            QuantifierResult = allContacts.All(contact => !string.IsNullOrWhiteSpace(contact.Email)) ? "Yes" : "No";
+        else if (SelectedQuantifier == "Any from Warsaw")
+            QuantifierResult = allContacts.Any(contact => contact.City.Equals("Warsaw", StringComparison.OrdinalIgnoreCase)) ? "Yes" : "No";
+        else
+            QuantifierResult = "Select a check to evaluate the collection.";
     }
 
-    private void UpdateAggregation()
+    private void UpdateAggregation(List<Contact> allContacts)
     {
-        AggregationResult = SelectedAggregation == "Average age"
-            ? _allContacts.Average(contact => contact.Age).ToString("F1")
-            : "Select an aggregation to calculate a value.";
+        if (allContacts.Count == 0)
+        {
+            AggregationResult = "No data available.";
+            return;
+        }
+
+        if (SelectedAggregation == "Average age")
+            AggregationResult = allContacts.Average(contact => contact.Age).ToString("F1");
+        else if (SelectedAggregation == "Max age")
+            AggregationResult = allContacts.Max(contact => contact.Age).ToString();
+        else if (SelectedAggregation == "Total contacts count")
+            AggregationResult = allContacts.Count.ToString();
+        else
+            AggregationResult = "Select an aggregation to calculate a value.";
     }
 
     private void ReplaceContacts(IEnumerable<Contact> contacts)
@@ -237,18 +276,19 @@ public class MainViewModel : INotifyPropertyChanged
     {
         var draft = new Contact
         {
-            Id = _allContacts.Count == 0 ? 1 : _allContacts.Max(contact => contact.Id) + 1,
             FirstName = "New",
             LastName = "Contact",
             Email = "new.contact@example.com",
             Age = 18,
-            City = "Warsaw"
+            City = "Warsaw",
+            CategoryId = 1 // default
         };
 
         var dialog = new EditContactDialog(draft, isNewContact: true);
         if (dialog.ShowDialog() == true)
         {
-            _allContacts.Add(draft);
+            _dbContext.Contacts.Add(draft);
+            _dbContext.SaveChanges();
             RefreshResults();
             SelectedContact = draft;
         }
@@ -264,6 +304,8 @@ public class MainViewModel : INotifyPropertyChanged
         var dialog = new EditContactDialog(SelectedContact, isNewContact: false);
         if (dialog.ShowDialog() == true)
         {
+            _dbContext.Contacts.Update(SelectedContact);
+            _dbContext.SaveChanges();
             RefreshResults();
         }
     }
@@ -275,7 +317,8 @@ public class MainViewModel : INotifyPropertyChanged
             return;
         }
 
-        _allContacts.Remove(SelectedContact);
+        _dbContext.Contacts.Remove(SelectedContact);
+        _dbContext.SaveChanges();
         SelectedContact = null;
         RefreshResults();
     }
