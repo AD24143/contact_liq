@@ -1,57 +1,93 @@
-using System;
-using System.ComponentModel;
+﻿using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
-namespace contact_liq
+namespace contact_liq;
+
+public class Contact : INotifyPropertyChanged
 {
-    public class contact : INotifyPropertyChanged
+    private int _id;
+    private string _firstName = string.Empty;
+    private string _lastName = string.Empty;
+    private string _email = string.Empty;
+    private int _age;
+    private string _city = string.Empty;
+
+    public int Id
     {
-        private int _id;
-        private string _firstName;
-        private string _lastName;
-        private string _email;
-        private int _age;
-        private string _city;
+        get => _id;
+        set => SetField(ref _id, value);
+    }
 
-        public int Id
+    public string FirstName
+    {
+        get => _firstName;
+        set => SetField(ref _firstName, value);
+    }
+
+    public string LastName
+    {
+        get => _lastName;
+        set => SetField(ref _lastName, value);
+    }
+
+    public string Email
+    {
+        get => _email;
+        set => SetField(ref _email, value);
+    }
+
+    public int Age
+    {
+        get => _age;
+        set => SetField(ref _age, value);
+    }
+
+    public string City
+    {
+        get => _city;
+        set => SetField(ref _city, value);
+    }
+
+    public string FullName => $"{FirstName} {LastName}".Trim();
+
+    public Contact Clone()
+    {
+        return new Contact
         {
-            get => _id;
-            set { _id = value; OnPropertyChanged(nameof(Id)); }
+            Id = Id,
+            FirstName = FirstName,
+            LastName = LastName,
+            Email = Email,
+            Age = Age,
+            City = City
+        };
+    }
+
+    public void ApplyChanges(Contact source)
+    {
+        FirstName = source.FirstName;
+        LastName = source.LastName;
+        Email = source.Email;
+        Age = source.Age;
+        City = source.City;
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            return false;
         }
 
-        public string FirstName
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        if (propertyName is nameof(FirstName) or nameof(LastName))
         {
-            get => _firstName;
-            set { _firstName = value; OnPropertyChanged(nameof(FirstName)); }
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FullName)));
         }
 
-        public string LastName
-        {
-            get => _lastName;
-            set { _lastName = value; OnPropertyChanged(nameof(LastName)); }
-        }
-
-        public string Email
-        {
-            get => _email;
-            set { _email = value; OnPropertyChanged(nameof(Email)); }
-        }
-
-        public int Age
-        {
-            get => _age;
-            set { _age = value; OnPropertyChanged(nameof(Age)); }
-        }
-
-        public string City
-        {
-            get => _city;
-            set { _city = value; OnPropertyChanged(nameof(City)); }
-        }
-
-        public event PropertyChangedEventHandler PropertyChanged;
-        protected void OnPropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
+        return true;
     }
 }

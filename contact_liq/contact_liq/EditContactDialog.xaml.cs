@@ -1,28 +1,32 @@
 ﻿using System.Windows;
 
-namespace contact_liq
+namespace contact_liq;
+
+public partial class EditContactDialog : Window
 {
-    public partial class EditContactDialog : Window
+    private readonly Contact _targetContact;
+
+    public EditContactDialog(Contact contact, bool isNewContact)
     {
-        private Contact _contact;
+        InitializeComponent();
+        _targetContact = contact;
+        EditableContact = contact.Clone();
+        DialogTitle = isNewContact ? "Add Contact" : "Edit Contact";
+        DataContext = this;
+    }
 
-        public EditContactDialog(Contact contact)
-        {
-            InitializeComponent();
-            _contact = contact;
-            DataContext = _contact;
-        }
+    public Contact EditableContact { get; }
 
-        private void OkButton_Click(object sender, RoutedEventArgs e)
-        {
-            DialogResult = true;
-            Close();
-        }
+    public string DialogTitle { get; }
 
-        private void CancelButton_Click(object sender, RoutedEventArgs e)
-        {
-            DialogResult = false;
-            Close();
-        }
+    private void OkButton_Click(object sender, RoutedEventArgs e)
+    {
+        _targetContact.ApplyChanges(EditableContact);
+        DialogResult = true;
+    }
+
+    private void CancelButton_Click(object sender, RoutedEventArgs e)
+    {
+        DialogResult = false;
     }
 }
